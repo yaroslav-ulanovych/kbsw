@@ -18,9 +18,11 @@
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
+void ChangeLayout(HKL newLayout);
 
 HMODULE hHooksMod;
 HKL layouts[64];
+HKL layout = NULL;
 UINT WM_CHANGELAYOUT;
 HINSTANCE hInstance;
 HWND hWnd;
@@ -29,6 +31,16 @@ HHOOK hLowLevelKeyboardHook;
 HHOOK hCallWndHook;
 DWORD prevKeyDownCode;
 DWORD prevKeyDownTime;
+UINT_PTR timerId = 0;
+HWND lastActiveWindow = 0;
+
+void WINAPI timerProc(HWND hWnd, UINT message, UINT_PTR timerId, DWORD time) {
+	hWnd = GetForegroundWindow();
+	if (hWnd != lastActiveWindow) {
+		lastActiveWindow = hWnd;
+		ChangeLayout(layout);
+	}
+}
 
 TCHAR szClassName[ ] = _T("kbswWindowClassName");
 
@@ -98,6 +110,13 @@ void LoadLayouts() {
 	printf("layout 2: %x\n", layouts[1]);
 }
 
+void ChangeLayout(HKL newLayout) {
+	layout = newLayout;
+	HWND hWnd = GetForegroundWindow();
+	PostMessage(hWnd, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)layout);
+	SendNotifyMessage(hWnd, WM_CHANGELAYOUT, (WPARAM)layout, 0);
+}
+
 int WINAPI WinMain(HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszArgument, int nCmdShow) {
 	hInstance = hThisInstance;
 	WNDCLASSEX wincl;
@@ -133,12 +152,6 @@ int WINAPI WinMain(HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszA
 	return msg.wParam;
 }
 
-void changeLayout(HKL layout) {
-	HWND hWnd = GetForegroundWindow();
-	PostMessage(hWnd, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)layout);
-	SendNotifyMessage(hWnd, WM_CHANGELAYOUT, (WPARAM)layout, 0);
-}
-
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (nCode == HC_ACTION) {
 		KBDLLHOOKSTRUCT *kdhs = (KBDLLHOOKSTRUCT*)lParam;
@@ -155,12 +168,10 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 				if ((vkCode == prevKeyDownCode) && (time - prevKeyDownTime < 200)) {
 					switch(vkCode) {
 						case VK_LCONTROL:
-							// printf("control\n");
-							changeLayout(layouts[1]);
+							ChangeLayout(layouts[1]);
 							break;
 						case VK_LSHIFT:
-							// printf("shift\n");
-							changeLayout(layouts[0]);
+							ChangeLayout(layouts[0]);
 							break;
 					}
 				}
@@ -181,9 +192,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			AddTrayIcon(hWnd);
 			LoadHooksLibrary();
 			InstallHooks();
+			timerId = SetTimer(0, 0, 100, timerProc);
 			break;
 		case WM_CLOSE:
 			UninstallHooks();
+			KillTimer(0, timerId);
 			RemoveTrayIcon(hWnd);
 			PostQuitMessage(0);
 			break;
