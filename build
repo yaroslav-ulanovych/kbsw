@@ -1,0 +1,3 @@
+gcc -c src/hooks.c
+gcc -shared hooks.o -o hooks.dll
+gcc src/kbsw.c res/icon.res -L./ -lhooks -o kbsw.exe
