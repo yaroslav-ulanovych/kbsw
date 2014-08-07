@@ -75,6 +75,7 @@ void UninstallHooks() {
 }
 
 void ShowPopupMenu() {
+	SetForegroundWindow(hWnd);
 	HMENU hMenu = CreatePopupMenu();
 	InsertMenu(hMenu, -1, MF_BYPOSITION | MF_STRING, MENU_ITEM_ID_EXIT, "Exit");
 	POINT pt;
