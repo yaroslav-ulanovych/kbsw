@@ -134,7 +134,9 @@ int WINAPI WinMain(HINSTANCE hThisInstance, HINSTANCE hPrevInstance, LPSTR lpszA
 }
 
 void changeLayout(HKL layout) {
-	SendNotifyMessage(GetForegroundWindow(), WM_CHANGELAYOUT, (WPARAM)layout, 0);
+	HWND hWnd = GetForegroundWindow();
+	PostMessage(hWnd, WM_INPUTLANGCHANGEREQUEST, 0, (LPARAM)layout);
+	SendNotifyMessage(hWnd, WM_CHANGELAYOUT, (WPARAM)layout, 0);
 }
 
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
